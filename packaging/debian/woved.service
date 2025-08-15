@@ -1,0 +1,47 @@
+[Unit]
+Description=WOVeD Vector Database
+Documentation=https://github.com/sean-ks/WOVeD-demo
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=woved
+Group=woved
+WorkingDirectory=/var/lib/woved
+
+# Service configuration
+ExecStart=/opt/woved/bin/wovedd --config /etc/woved/woved.yaml
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5s
+
+# Resource limits
+LimitNOFILE=1048576
+LimitMEMLOCK=infinity
+TasksMax=infinity
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/woved /var/log/woved
+
+# Performance tuning
+CPUAccounting=true
+MemoryAccounting=true
+IOAccounting=true
+CPUWeight=100
+MemoryMax=64G
+
+# NUMA configuration
+Environment="WOVED_NUMA_ENABLED=true"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=woved
+
+[Install]
+WantedBy=multi-user.target
