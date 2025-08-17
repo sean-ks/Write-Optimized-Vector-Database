@@ -1,0 +1,40 @@
+# Control
+
+Source: woved
+Section: database
+Priority: optional
+Maintainer: WOVeD Team <support@woved.io>
+Build-Depends: debhelper (>= 10),
+               cmake (>= 3.20),
+               clang-17,
+               liburing-dev,
+               libnuma-dev,
+               libhwloc-dev,
+               libomp-dev,
+               libprotobuf-dev,
+               libgrpc++-dev,
+               libflatbuffers-dev,
+               libfaiss-dev,
+               libroaring-dev,
+               liblz4-dev,
+               libzstd-dev,
+               libprometheus-cpp-dev
+Standards-Version: 4.5.0
+Homepage: <https://github.com/sean-ks/WOVeD-demo#>
+
+Package: woved
+Architecture: amd64
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         liburing2,
+         libnuma1,
+         libhwloc15,
+         libomp5,
+         libprotobuf23,
+         libgrpc++1,
+         libfaiss,
+         libroaring0,
+         liblz4-1,
+         libzstd1
+Description: Write-Optimized Vector Database
+WOVeD is a high-performance vector database optimized for write-heavy workloads while maintaining excellent query performance. It uses a B-epsilon tree for storage and advanced ANN indexing techniques.

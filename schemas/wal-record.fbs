@@ -1,0 +1,65 @@
+namespace woved.wal;
+
+enum Operation : byte {
+    UPSERT = 0,
+    DELETE = 1,
+    FENCE = 2
+}
+
+struct VectorIdHash {
+    value: uint64;
+}
+
+struct TenantNamespaceHash {
+    value: uint64;
+}
+
+struct Timestamp {
+    nanos: uint64;
+}
+
+table WALRecord {
+    // Operation type
+    op: Operation;
+    
+    // Vector ID (UUIDv7 string)
+    id: string;
+    
+    // Pre-computed hash of ID
+    id_hash: VectorIdHash;
+    
+    // Combined tenant+namespace hash
+    tenant_ns_hash: TenantNamespaceHash;
+    
+    // Timestamp in nanoseconds
+    timestamp: Timestamp;
+    
+    // Vector dimension
+    dim: uint16;
+    
+    // Vector data (normalized for cosine)
+    vector: [float];
+    
+    // Tag IDs
+    tags: [uint32];
+    
+    // Flags for future use
+    flags: uint32;
+    
+    // Epoch number
+    epoch: uint64;
+    
+    // Centroid ID for flush coherence
+    centroid_id: uint16;
+    
+    // Original tenant and namespace (for recovery)
+    tenant: string;
+    namespace: string;
+}
+
+table WALBatch {
+    records: [WALRecord];
+    fence_epoch: uint64;
+}
+
+root_type WALRecord;

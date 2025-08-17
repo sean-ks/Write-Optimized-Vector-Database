@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  woved:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USE_PMEM: ${USE_PMEM:-OFF}
+    image: woved:latest
+    container_name: woved
+    ports:
+      - "8080:8080"  # HTTP API
+      - "9090:9090"  # gRPC API
+      - "9091:9091"  # Metrics
+    volumes:
+      - woved-data:/var/lib/woved
+      - woved-logs:/var/log/woved
+      - ./configs/woved-prod.yaml:/etc/woved/woved.yaml:ro
+    environment:
+      - WOVED_LOG_LEVEL=info
+      - WOVED_NUMA_ENABLED=true
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
+      memlock:
+        soft: -1
+        hard: -1
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_RESOURCE
+      - SYS_NICE  # For io_uring SQPOLL
+    restart: unless-stopped
+    networks:
+      - woved-net
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 64G
+        reservations:
+          cpus: '4'
+          memory: 32G
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: woved-prometheus
+    ports:
+      - "9092:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - woved-net
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: woved-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=redis-datasource
+    networks:
+      - woved-net
+    restart: unless-stopped
+
+volumes:
+  woved-data:
+    driver: local
+  woved-logs:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  woved-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

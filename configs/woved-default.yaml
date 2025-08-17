@@ -1,0 +1,191 @@
+# WOVeD Default Configuration
+version: 1.0
+
+server:
+  bind_address: "0.0.0.0"
+  grpc_port: 9090
+  http_port: 8080
+  metrics_port: 9091
+  max_connections: 1000
+  worker_threads: 0  # 0 = auto-detect
+  
+collection:
+  dim: 768
+  metric: ip  # cosine via normalization (ip, l2, cosine)
+  max_vectors: 100000000  # 100M
+  id_type: uuidv7  # uuidv7, custom
+  
+storage:
+  data_dir: "/var/lib/woved"
+  wal_dir: "/var/lib/woved/wal"
+  segment_dir: "/var/lib/woved/segments"
+  
+  # B-epsilon tree settings
+  btree:
+    epsilon: 0.5  # Initial epsilon value
+    node_size_kb: 64
+    fanout: 256
+    adaptive_epsilon: true
+    hot_partition_threshold: 0.5
+    direct_flush_threshold: 0.8
+    
+  # Message buffer settings
+  buffer:
+    type: "nvm"  # nvm, mmap, memory
+    size_bytes: 17179869184  # 16 GiB
+    shard_count: 16
+    flush_threshold_bytes: 134217728  # 128 MiB (Lmax)
+    flush_interval_ms: 100
+    dedupe_enabled: true
+    
+  # WAL settings
+  wal:
+    framed_records: true
+    frame_header: [len_u32, crc32c_u32, epoch_u64]
+    fence_len: 0
+    group_commit_ms: 8
+    fence_every_ms: 5
+    fsync_every_fences: 50
+    rotate_bytes: 3221225472  # 3 GiB
+    max_files: 10
+    compression: none  # none, lz4, zstd
+    
+  # Segment settings
+  segment:
+    target_size_vectors: 2000000  # 2M vectors
+    max_segments_per_leaf: 8
+    tombstone_ratio_threshold: 0.2
+    merge_bandwidth_limit: 0.3  # 30% of device bandwidth
+    enable_compression: false
+    compression_type: zstd
+    
+index:
+  # Delta segments (fresh data)
+  delta:
+    type: ivf_flat
+    nlist: 1024
+    nprobe: 6
+    sample_p: 0.25
+    list_cap: 2000
+    global_centroids: true  # Use shared global centroids
+    rebuild_interval_hours: 24
+    
+  # Stable segments (merged/cold)
+  stable:
+    type: ivf_pq
+    nlist: 4096
+    pq:
+      m: 96
+      nbits: 8
+      use_opq: true
+    nprobe: 12
+    rerank_factor: 4  # Rerank 4x candidates
+    
+  # Global index
+  global:
+    type: ivf  # ivf, hnsw
+    nlist: 1024
+    memory_cache_mb: 512
+    
+  # Optional HNSW cache
+  hnsw_cache:
+    enabled: false
+    max_elements: 1000000
+    m: 16
+    ef_construction: 200
+    ef: 50
+    
+filtering:
+  bitmap_cache_bytes: 1073741824  # 1 GiB global cache
+  per_segment_soft_cap_bytes: 134217728  # 128 MiB per segment
+  bloom_filter_enabled: true
+  bloom_filter_fpp: 0.01
+  tag_dict_size: 50000
+  max_tags_per_vector: 16
+  dense_bitmap_threshold: 0.2  # Density threshold for dense bitmaps
+  
+query:
+  timeout_ms: 5000
+  max_candidates: 10000
+  default_top_k: 10
+  max_top_k: 100
+  two_phase_enabled: true
+  buffer_scan_enabled: true
+  prefetch_enabled: true
+  prefetch_depth: 2
+  
+tuning:
+  recall_target: 0.95
+  auto_tune_enabled: true
+  nprobe_delta_min: 4
+  nprobe_delta_max: 8
+  nprobe_stable_min: 8
+  nprobe_stable_max: 16
+  persist_decisions: true
+  decision_window_hours: 1
+  
+io:
+  use_iouring: true
+  iouring:
+    sqpoll: true
+    queue_depth: 32
+    register_files: true
+    link_timeout_ms: 5
+  use_direct_io: false
+  prefetch_distance: 4
+  merge_bandwidth_limit_mbps: 500
+  read_ahead_kb: 8192
+  
+numa:
+  enabled: true
+  bind_threads: true
+  replicate_centroids: true
+  memory_policy: interleave  # bind, interleave, preferred
+  
+monitoring:
+  prometheus:
+    enabled: true
+    scrape_interval_s: 15
+  metrics:
+    - woved_ingestion_qps
+    - woved_query_qps
+    - woved_query_latency_p99
+    - woved_recall_estimate
+    - woved_delta_segments
+    - woved_delta_resident_fraction
+    - woved_write_amplification
+    - woved_wal_group_commits
+    - woved_bitmap_cache_hits
+    - woved_bitmap_cache_misses
+    - woved_flush_lag_ms
+    - woved_compaction_debt
+    
+limits:
+  max_upsert_batch: 10000
+  max_query_batch: 100
+  max_request_size_bytes: 104857600  # 100 MiB
+  max_memory_gb: 64
+  max_cpu_percent: 85
+  max_disk_usage_percent: 90
+  
+recovery:
+  checkpoint_interval_s: 60
+  max_recovery_time_s: 30
+  parallel_recovery_threads: 4
+  verify_checksums: true
+  
+experimental:
+  gpu_acceleration: false
+  gpu_device_id: 0
+  learned_index: false
+  adaptive_sampling: true
+  connectivity_aware_layout: true
+  vector_compression: false
+  
+logging:
+  level: info  # debug, info, warn, error
+  file: "/var/log/woved/woved.log"
+  max_size_mb: 100
+  max_files: 10
+  console: true
+  structured: true

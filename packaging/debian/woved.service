@@ -1,0 +1,74 @@
+[Unit]
+Description=WOVeD Vector Database
+Documentation=https://github.com/sean-ks/WOVeD-demo
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=woved
+Group=woved
+WorkingDirectory=/var/lib/woved
+
+# Service configuration
+ExecStart=/opt/woved/bin/wovedd --config /etc/woved/woved.yaml
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/bin/kill -TERM $MAINPID
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=5s
+SuccessExitStatus=0
+
+# Resource limits
+LimitNOFILE=1048576
+LimitMEMLOCK=infinity
+TasksMax=infinity
+IOWeight=100
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/var/lib/woved /var/log/woved
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+PrivateMounts=true
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete
+SystemCallErrorNumber=EPERM
+
+# Allow io_uring
+SystemCallFilter=io_uring_setup io_uring_enter io_uring_register
+
+# Performance tuning
+CPUAccounting=true
+MemoryAccounting=true
+IOAccounting=true
+CPUWeight=100
+MemoryMax=64G
+MemoryHigh=56G
+IOReadBandwidthMax=/dev/nvme0n1 2G
+IOWriteBandwidthMax=/dev/nvme0n1 1G
+
+# NUMA configuration
+Environment="WOVED_NUMA_ENABLED=true"
+Environment="WOVED_NUMA_NODE=0"
+
+# io_uring SQPOLL requires CAP_SYS_NICE
+AmbientCapabilities=CAP_SYS_NICE
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=woved
+
+# OOM configuration
+OOMScoreAdjust=-500
+
+[Install]
+WantedBy=multi-user.target
